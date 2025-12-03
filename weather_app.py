@@ -4,8 +4,21 @@
 參考 CWA 官網設計的美化版本
 """
 import streamlit as st
+import pandas as pd
+import pydeck as pdk
 from weather_client import WeatherAPIClient
 
+# 台灣地區座標定義 (中心點)
+REGION_COORDINATES = {
+    "北部地區": {"lat": 25.0330, "lon": 121.5654},  # 台北
+    "中部地區": {"lat": 24.1477, "lon": 120.6736},  # 台中
+    "南部地區": {"lat": 22.6273, "lon": 120.3014},  # 高雄
+    "東北部地區": {"lat": 24.7596, "lon": 121.7511}, # 宜蘭
+    "東南部地區": {"lat": 22.7613, "lon": 121.1445}, # 台東
+    "澎湖地區": {"lat": 23.5711, "lon": 119.5793},   # 澎湖
+    "金門地區": {"lat": 24.4404, "lon": 118.3226},   # 金門
+    "馬祖地區": {"lat": 26.1505, "lon": 119.9265},   # 馬祖
+}
 
 # 設定頁面配置
 st.set_page_config(
@@ -207,6 +220,42 @@ def fetch_temperature_info(location_name: str):
     return client.get_temperature_info(location_name)
 
 
+@st.cache_data(ttl=600)  # 快取 10 分鐘
+def fetch_map_data():
+    """取得地圖視覺化所需的資料"""
+    client = WeatherAPIClient()
+    all_data = client.get_all_locations_data()
+    
+    map_data = []
+    for item in all_data:
+        loc_name = item['location']
+        if loc_name in REGION_COORDINATES:
+            coords = REGION_COORDINATES[loc_name]
+            # 決定顏色 (R, G, B)
+            max_temp = item['max_temp']
+            if max_temp is None:
+                color = [200, 200, 200] # 灰色
+            elif max_temp < 20:
+                color = [33, 150, 243] # 藍色
+            elif max_temp < 28:
+                color = [76, 175, 80] # 綠色
+            elif max_temp < 32:
+                color = [255, 193, 7] # 黃色
+            else:
+                color = [244, 67, 54] # 紅色
+                
+            map_data.append({
+                "name": loc_name,
+                "lat": coords["lat"],
+                "lon": coords["lon"],
+                "max_temp": max_temp,
+                "weather": item['weather'],
+                "color": color
+            })
+            
+    return pd.DataFrame(map_data)
+
+
 def main():
     """主應用程式"""
     
@@ -220,6 +269,47 @@ def main():
             <p>即時天氣預報・溫度查詢・全台覆蓋</p>
         </div>
     """, unsafe_allow_html=True)
+    
+    # 地圖視覺化
+    st.markdown("### 🗺️ 全台天氣概況")
+    with st.spinner("🔄 正在載入地圖資料..."):
+        df_map = fetch_map_data()
+        
+    if not df_map.empty:
+        # 設定地圖視角
+        view_state = pdk.ViewState(
+            latitude=23.6,
+            longitude=121.0,
+            zoom=6.5,
+            pitch=0,
+        )
+        
+        # 建立圖層
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            df_map,
+            get_position="[lon, lat]",
+            get_color="color",
+            get_radius=20000,  # 半徑 20 公里
+            pickable=True,
+            opacity=0.8,
+            stroked=True,
+            filled=True,
+            radius_scale=1,
+            radius_min_pixels=10,
+            radius_max_pixels=50,
+        )
+        
+        # 顯示地圖
+        st.pydeck_chart(pdk.Deck(
+            map_style=None, # 使用預設樣式
+            initial_view_state=view_state,
+            layers=[layer],
+            tooltip={
+                "html": "<b>{name}</b><br/>最高溫: {max_temp}°C<br/>天氣: {weather}",
+                "style": {"backgroundColor": "steelblue", "color": "white"}
+            }
+        ))
     
     # 取得地點清單
     with st.spinner("🔄 正在載入地點清單..."):

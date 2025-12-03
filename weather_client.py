@@ -177,6 +177,70 @@ class WeatherAPIClient:
             print(f"✗ 提取溫度資訊時發生錯誤: {e}")
             return None
     
+    def get_all_locations_data(self) -> List[Dict[str, Any]]:
+        """
+        取得所有地點的溫度資訊
+        
+        Returns:
+            List[Dict]: 包含所有地點溫度資訊的列表
+        """
+        data = self.fetch_weather_data()
+        if not data:
+            return []
+        
+        results = []
+        try:
+            # 導航到 location 清單
+            root = data.get('cwaopendata', {})
+            resources = root.get('resources', {})
+            resource = resources.get('resource', {})
+            data_node = resource.get('data', {})
+            agr_forecasts = data_node.get('agrWeatherForecasts', {})
+            weather_forecasts = agr_forecasts.get('weatherForecasts', {})
+            locations = weather_forecasts.get('location', [])
+            
+            for loc in locations:
+                location_name = loc.get('locationName')
+                if not location_name:
+                    continue
+                    
+                # 提取溫度資訊
+                elements = loc.get('weatherElements', {})
+                
+                # 最高溫
+                max_t_data = elements.get('MaxT', {}).get('daily', [])
+                first_day_max = max_t_data[0] if max_t_data else {}
+                max_temp_str = first_day_max.get('temperature', '-')
+                max_temp = self._parse_temperature(max_temp_str)
+                
+                # 最低溫
+                min_t_data = elements.get('MinT', {}).get('daily', [])
+                first_day_min = min_t_data[0] if min_t_data else {}
+                min_temp_str = first_day_min.get('temperature', '-')
+                min_temp = self._parse_temperature(min_temp_str)
+                
+                # 日期
+                date = first_day_max.get('dataDate', '-')
+                
+                # 天氣現象
+                wx_data = elements.get('Wx', {}).get('daily', [])
+                first_day_wx = wx_data[0] if wx_data else {}
+                weather = first_day_wx.get('weather', '-')
+                
+                results.append({
+                    'location': location_name,
+                    'date': date,
+                    'max_temp': max_temp,
+                    'min_temp': min_temp,
+                    'weather': weather
+                })
+            
+            return results
+            
+        except Exception as e:
+            print(f"✗ 提取所有地點資訊時發生錯誤: {e}")
+            return []
+
     def _parse_temperature(self, temp_str: str) -> Optional[float]:
         """
         解析溫度字串為浮點數
@@ -226,3 +290,12 @@ if __name__ == "__main__":
             print(f"  天氣: {temp_info['weather']}")
         else:
             print("✗ 無法取得溫度資訊")
+    
+    # 測試取得所有地點的溫度資訊
+    print("\n🌍 取得所有地點的溫度資訊...")
+    all_locations_data = client.get_all_locations_data()
+    if all_locations_data:
+        print(f"✓ 成功取得資訊: {len(all_locations_data)} 筆資料")
+        print(f"前 5 筆資料: {all_locations_data[:5]}")
+    else:
+        print("✗ 無法取得所有地點的溫度資訊")
