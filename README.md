@@ -1,8 +1,8 @@
 # 中央氣象署天氣資料爬蟲與 Web UI
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://cwa-weather.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://cwaweather-cclsolplnvjp9nkcjhbmez.streamlit.app/)
 
-> 🌐 **線上體驗：** [https://cwa-weather.streamlit.app](https://cwa-weather.streamlit.app)
+> 🌐 **線上體驗：** [https://cwaweather-cclsolplnvjp9nkcjhbmez.streamlit.app/](https://cwaweather-cclsolplnvjp9nkcjhbmez.streamlit.app/)
 
 從中央氣象署開放資料平台獲取鄉鎮天氣預報資料，提供 CLI 和 Web UI 兩種使用方式。
 
