@@ -19,9 +19,8 @@ wheels/
 *.egg-info/
 .installed.cfg
 
-# Database
-data.db
-*.db
+# Database (exclude data.db from ignore to allow initial commit)
+# data.db will be tracked in git for deployment
 *.sqlite
 *.sqlite3
 *.egg
