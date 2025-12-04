@@ -18,6 +18,12 @@ var/
 wheels/
 *.egg-info/
 .installed.cfg
+
+# Database
+data.db
+*.db
+*.sqlite
+*.sqlite3
 *.egg
 
 # Virtual Environment

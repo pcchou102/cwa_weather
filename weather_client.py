@@ -7,6 +7,7 @@ import requests
 import json
 import urllib3
 from typing import Optional, List, Dict, Any
+from database import WeatherDatabase
 
 # 停用 SSL 警告
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -18,18 +19,21 @@ class WeatherAPIClient:
     BASE_URL = "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi"
     DEFAULT_API_KEY = "CWA-EED186C4-DA85-4467-8C6F-F87B1111AA87"
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, use_database: bool = True):
         """
         初始化 API 客戶端
         
         Args:
             api_key: CWA API 授權金鑰，若未提供則從環境變數讀取
+            use_database: 是否啟用資料庫快取功能
         """
         self.api_key = api_key or os.getenv("CWA_API_KEY", self.DEFAULT_API_KEY)
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'WeatherCrawler/1.0'
         })
+        self.use_database = use_database
+        self.db = WeatherDatabase() if use_database else None
     
     def fetch_weather_data(self) -> Optional[Dict[str, Any]]:
         """
@@ -117,6 +121,15 @@ class WeatherAPIClient:
                 'weather': str
             }
         """
+        # 如果啟用資料庫，先檢查快取
+        if self.use_database and self.db:
+            if self.db.is_data_fresh(location_name, ttl_minutes=10):
+                cached_data = self.db.get_latest_data(location_name)
+                if cached_data:
+                    print(f"✓ 從資料庫快取載入: {location_name}")
+                    return cached_data
+        
+        # 從 API 取得資料
         data = self.fetch_weather_data()
         if not data:
             return None
@@ -165,13 +178,22 @@ class WeatherAPIClient:
             first_day_wx = wx_data[0] if wx_data else {}
             weather = first_day_wx.get('weather', '-')
             
-            return {
+            result = {
                 'location': location_name,
                 'date': date,
                 'max_temp': max_temp,
                 'min_temp': min_temp,
                 'weather': weather
             }
+            
+            # 儲存到資料庫
+            if self.use_database and self.db:
+                self.db.insert_weather_data(
+                    location_name, date, max_temp, min_temp, weather
+                )
+                print(f"✓ 已儲存到資料庫: {location_name}")
+            
+            return result
             
         except Exception as e:
             print(f"✗ 提取溫度資訊時發生錯誤: {e}")
@@ -227,13 +249,23 @@ class WeatherAPIClient:
                 first_day_wx = wx_data[0] if wx_data else {}
                 weather = first_day_wx.get('weather', '-')
                 
-                results.append({
+                result_item = {
                     'location': location_name,
                     'date': date,
                     'max_temp': max_temp,
                     'min_temp': min_temp,
                     'weather': weather
-                })
+                }
+                results.append(result_item)
+                
+                # 儲存到資料庫
+                if self.use_database and self.db:
+                    self.db.insert_weather_data(
+                        location_name, date, max_temp, min_temp, weather
+                    )
+            
+            if self.use_database and self.db and results:
+                print(f"✓ 已儲存 {len(results)} 筆資料到資料庫")
             
             return results
             

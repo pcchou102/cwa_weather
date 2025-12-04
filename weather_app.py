@@ -415,6 +415,65 @@ def main():
             st.error(f"❌ 無法取得「{selected_location}」的溫度資訊")
             st.info("💡 提示：資料可能暫時無法使用，請稍後再試")
     
+    # 資料庫歷史資料表格
+    st.markdown("---")
+    st.markdown("## 📊 資料庫歷史記錄")
+    
+    try:
+        from database import WeatherDatabase
+        db = WeatherDatabase()
+        all_data = db.get_all_latest_data()
+        
+        if all_data:
+            # 轉換為 DataFrame
+            df_display = pd.DataFrame(all_data)
+            
+            # 重新命名欄位為中文
+            df_display = df_display.rename(columns={
+                'location': '地點',
+                'date': '日期',
+                'max_temp': '最高溫 (°C)',
+                'min_temp': '最低溫 (°C)',
+                'weather': '天氣現象',
+                'updated_at': '更新時間'
+            })
+            
+            # 選擇要顯示的欄位
+            df_display = df_display[['地點', '日期', '最高溫 (°C)', '最低溫 (°C)', '天氣現象', '更新時間']]
+            
+            # 顯示統計資訊
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("📍 總地點數", len(df_display))
+            with col2:
+                avg_max = df_display['最高溫 (°C)'].mean()
+                st.metric("🌡️ 平均最高溫", f"{avg_max:.1f}°C")
+            with col3:
+                avg_min = df_display['最低溫 (°C)'].mean()
+                st.metric("❄️ 平均最低溫", f"{avg_min:.1f}°C")
+            
+            # 顯示表格
+            st.dataframe(
+                df_display,
+                width="stretch",
+                hide_index=True,
+                column_config={
+                    "地點": st.column_config.TextColumn("地點", width="medium"),
+                    "日期": st.column_config.DateColumn("日期", format="YYYY-MM-DD"),
+                    "最高溫 (°C)": st.column_config.NumberColumn("最高溫 (°C)", format="%.1f"),
+                    "最低溫 (°C)": st.column_config.NumberColumn("最低溫 (°C)", format="%.1f"),
+                    "天氣現象": st.column_config.TextColumn("天氣現象", width="medium"),
+                    "更新時間": st.column_config.DatetimeColumn("更新時間", format="YYYY-MM-DD HH:mm:ss")
+                }
+            )
+            
+            st.caption(f"📊 資料庫中共有 {len(df_display)} 筆記錄")
+        else:
+            st.info("📭 資料庫中尚無資料，請執行 `python crawl_and_save.py` 來爬取資料")
+            
+    except Exception as e:
+        st.warning(f"⚠️ 無法讀取資料庫：{e}")
+    
     # 頁尾
     st.markdown("""
         <div class="footer">
