@@ -98,7 +98,7 @@ python weather_crawler.py
 ### 方式 3: Python 程式中使用
 
 ```python
-from weather_client import WeatherAPIClient
+from weather_crawler import WeatherAPIClient
 
 # 建立客戶端
 client = WeatherAPIClient()

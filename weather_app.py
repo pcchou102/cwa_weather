@@ -6,7 +6,7 @@
 import streamlit as st
 import pandas as pd
 import pydeck as pdk
-from weather_client import WeatherAPIClient
+from weather_crawler import WeatherAPIClient
 
 # 台灣地區座標定義 (中心點)
 REGION_COORDINATES = {

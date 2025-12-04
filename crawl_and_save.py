@@ -2,7 +2,7 @@
 完整天氣資料爬蟲腳本
 從 CWA API 取得所有地點的天氣資料並儲存到資料庫
 """
-from weather_client import WeatherAPIClient
+from weather_crawler import WeatherAPIClient
 from database import WeatherDatabase
 
 
